@@ -131,7 +131,7 @@ def _apply_claude(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str,
                 clock_txt=clock_txt, invert=invert,
             )
         )
-        ok = await pixoo.async_send_frame(session, ip, payload)
+        ok = await pixoo.async_send_frame(session, ip, payload, entry_data)
         if ok:
             entry_data["last_sig"] = sig
             entry_data["last_push"] = now_mono
@@ -181,6 +181,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "claude_state_unsub": None,
         "last_sig": None,
         "last_push": 0.0,
+        "gif_counter": None,  # synced from the device on first frame push
     }
     hass.data[DOMAIN][entry.entry_id] = entry_data
 

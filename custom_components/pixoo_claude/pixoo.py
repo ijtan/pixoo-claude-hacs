@@ -1,11 +1,19 @@
 """Async client for the Divoom Pixoo 64 local HTTP API.
 
 The Pixoo exposes a JSON command endpoint at http://<ip>:80/post. We use:
-  • Draw/ResetHttpGifId  — reset the GIF id before a fresh frame
+  • Draw/GetHttpGifId    — read the device's current GIF id (sync our counter)
+  • Draw/ResetHttpGifId  — reset the GIF id (only every N frames)
   • Draw/SendHttpGif     — push a 64x64 RGB frame (base64 in PicData)
   • Channel/SetBrightness
   • Channel/SetIndex     — hand the panel back to a built-in channel
   • Device/GetDeviceTime — cheap reachability probe
+
+Push strategy mirrors the SomethingWithComputers/pixoo lib (and gickowtf's HA
+integration): each frame uses a *monotonically incrementing* PicID synced from
+the device, and we reset the GIF id only every REFRESH_COUNTER_LIMIT frames —
+the documented way to dodge the firmware's "~300 frames then it freezes" bug.
+That's one POST per frame (not reset+send each time), which is far gentler on
+flaky WiFi than hammering a reset before every push.
 """
 from __future__ import annotations
 
@@ -23,10 +31,15 @@ CHANNEL_CLOUD = 1       # Divoom online gallery
 CHANNEL_VISUALIZER = 2
 CHANNEL_CUSTOM = 3
 
-# Frames are ~16 KB and the panel can be slow/lossy over weak WiFi — be patient.
-# Generous timeouts: a slow ack is better than a dropped frame + retry storm.
-_POST_TIMEOUT = aiohttp.ClientTimeout(total=60)
-_PROBE_TIMEOUT = aiohttp.ClientTimeout(total=20)
+# Reset the device GIF id once the counter passes this, to avoid the firmware
+# freeze after a few hundred frames (same value the reference libs use).
+REFRESH_COUNTER_LIMIT = 32
+
+# Frames are ~16 KB and the panel can be slow/lossy over weak WiFi. One POST per
+# frame + a moderate timeout; on failure we just give up and let the next tick
+# (and the heartbeat re-push) recover — no retry storm.
+_POST_TIMEOUT = aiohttp.ClientTimeout(total=15)
+_PROBE_TIMEOUT = aiohttp.ClientTimeout(total=10)
 
 
 def _url(ip: str) -> str:
@@ -53,24 +66,55 @@ async def async_post(
         return None
 
 
+async def async_get_gif_id(session: aiohttp.ClientSession, ip: str) -> int | None:
+    """Read the device's current HTTP GIF id, so our counter starts in sync."""
+    result = await async_post(session, ip, {"Command": "Draw/GetHttpGifId"})
+    if result is not None and result.get("error_code", 0) == 0:
+        try:
+            return int(result.get("PicId", 0))
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+async def async_reset_gif_id(session: aiohttp.ClientSession, ip: str) -> None:
+    """Reset the device's HTTP GIF id (done periodically, not per frame)."""
+    await async_post(session, ip, {"Command": "Draw/ResetHttpGifId"})
+
+
 async def async_send_frame(
     session: aiohttp.ClientSession, ip: str, gif_payload: dict[str, Any],
-    retries: int = 3,
+    state: dict[str, Any], retries: int = 2,
 ) -> bool:
-    """Reset the GIF id then push a Draw/SendHttpGif frame, with retries.
+    """Push a Draw/SendHttpGif frame with a monotonically incrementing PicID.
 
-    Returns True if the device acknowledged (error_code 0).
+    `state` is a per-device dict we use to persist the GIF counter across calls.
+    The id is synced from the device on first use and the GIF buffer is reset
+    only every REFRESH_COUNTER_LIMIT frames. Returns True on ack (error_code 0).
     """
+    counter = state.get("gif_counter")
+    if counter is None:
+        synced = await async_get_gif_id(session, ip)
+        counter = synced if synced is not None else 0
+
+    ok = False
     for attempt in range(1, retries + 1):
-        await async_post(session, ip, {"Command": "Draw/ResetHttpGifId"})
-        result = await async_post(session, ip, gif_payload)
+        counter += 1
+        if counter >= REFRESH_COUNTER_LIMIT:
+            await async_reset_gif_id(session, ip)
+            counter = 1
+        result = await async_post(session, ip, {**gif_payload, "PicID": counter})
         if result is not None and result.get("error_code", 0) == 0:
-            return True
+            ok = True
+            break
         if attempt < retries:
-            await asyncio.sleep(3 * attempt)  # gentle backoff: 3s, 6s
-    _LOGGER.warning("Pixoo at %s did not accept the frame after %d attempt(s)",
-                    ip, retries)
-    return False
+            await asyncio.sleep(3)
+
+    state["gif_counter"] = counter
+    if not ok:
+        _LOGGER.warning("Pixoo at %s did not accept the frame after %d attempt(s)",
+                        ip, retries)
+    return ok
 
 
 async def async_set_brightness(

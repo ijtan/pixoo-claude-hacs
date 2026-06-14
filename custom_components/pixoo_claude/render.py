@@ -151,8 +151,11 @@ def text_w(s, scale=1):
     return (len(s) * (CH_W + CH_GAP) - CH_GAP) * scale
 
 
-def _draw_header(fb, clock_txt):
-    fb.sprite(MARGIN, MARGIN, CLAUDE_GUY, PALETTE)   # the Claude critter
+def _draw_header(fb, clock_txt, claude_dxy=(0, 0)):
+    # claude_dxy nudges only the critter's position (silhouette unchanged) so it
+    # can bob/dance across animation frames without touching the pixel art.
+    dx, dy = claude_dxy
+    fb.sprite(MARGIN + dx, MARGIN + dy, CLAUDE_GUY, PALETTE)   # the Claude critter
     fb.text(13, 2, "CLAUDE", WHITE)
     if clock_txt:
         fb.text(W - MARGIN - text_w(clock_txt), 2, clock_txt, GREY)
@@ -184,7 +187,8 @@ def _draw_bar_block(fb, yb, icon_name, pct, reset_txt, invert=False,
 
 
 def render(session, week, credits_txt="", session_reset="", week_reset="",
-           clock_txt="", flash_on=True, invert=False, flash_threshold=101) -> Image.Image:
+           clock_txt="", flash_on=True, invert=False, flash_threshold=101,
+           claude_offset=(0, 0)) -> Image.Image:
     """
     Adaptive Claude-usage screen.
       Normal (nothing maxed): Session + Week bars, each with its own reset time.
@@ -192,7 +196,7 @@ def render(session, week, credits_txt="", session_reset="", week_reset="",
                               amount/total number (only if credits_txt given).
     """
     fb = FB()
-    _draw_header(fb, clock_txt)
+    _draw_header(fb, clock_txt, claude_offset)
 
     full = None
     if session >= 100:   full = ("bolt", "SESSION", session_reset)
@@ -234,13 +238,20 @@ def image_to_pic_data(img: Image.Image) -> str:
     return base64.b64encode(bytes(data)).decode()
 
 
+# Gentle idle "dance": nudge the critter's position only (silhouette intact).
+DANCE_OFFSETS = [(0, 0), (0, 1), (0, 0), (0, -1)]
+
+
 def build_frames(session, week, credits_txt="", session_reset="", week_reset="",
-                 clock_txt="", invert=False, flash_threshold=101):
+                 clock_txt="", invert=False, flash_threshold=101, dance=False):
     """Render the screen as base64 PicData frames + the per-frame speed (ms).
 
-    Returns ``(frames, speed)``. When a metric is at/above ``flash_threshold`` or
-    FULL (>=100) it's a 2-frame bright/dim blink the device loops on its own;
-    otherwise a single static frame. Pure Pillow — safe to call in an executor.
+    Returns ``(frames, speed)``. Precedence:
+      * a metric at/above ``flash_threshold`` or FULL (>=100) → 2-frame bright/dim
+        blink (flash wins over dance — keep attention on the alert);
+      * else ``dance`` → a multi-frame loop bobbing the Claude critter;
+      * else a single static frame.
+    The device loops whatever we send. Pure Pillow — safe in an executor.
     """
     kw = dict(session=session, week=week, credits_txt=credits_txt,
               session_reset=session_reset, week_reset=week_reset,
@@ -251,4 +262,8 @@ def build_frames(session, week, credits_txt="", session_reset="", week_reset="",
         on = image_to_pic_data(render(flash_on=True, **kw))
         off = image_to_pic_data(render(flash_on=False, **kw))
         return [on, off], 500
-    return [image_to_pic_data(render(flash_on=True, **kw))], 1000
+    if dance:
+        frames = [image_to_pic_data(render(claude_offset=off, **kw))
+                  for off in DANCE_OFFSETS]
+        return frames, 220
+    return [image_to_pic_data(render(**kw))], 1000

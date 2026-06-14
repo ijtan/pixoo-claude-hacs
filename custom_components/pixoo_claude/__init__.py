@@ -20,8 +20,8 @@ from homeassistant.util import dt as dt_util
 from . import pixoo
 from .const import (
     CLAUDE_REPUSH_HEARTBEAT, CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED,
-    CONF_CLOUD_WHEN_IDLE, CONF_FLASH_THRESHOLD, CONF_INVERT, CONF_IP_ADDRESS,
-    CONF_NAME, CONF_SHOW_CLOCK, DOMAIN, PUSH_TICK_SECONDS,
+    CONF_CLOUD_WHEN_IDLE, CONF_DANCE, CONF_FLASH_THRESHOLD, CONF_INVERT,
+    CONF_IP_ADDRESS, CONF_NAME, CONF_SHOW_CLOCK, DOMAIN, PUSH_TICK_SECONDS,
 )
 from .helpers import (
     find_claude_entities, is_truthy_state, parse_float, reset_countdown_coarse,
@@ -117,12 +117,13 @@ def _apply_claude(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str,
 
         invert = entry.options.get(CONF_INVERT, False)
         flash_threshold = entry.options.get(CONF_FLASH_THRESHOLD, 95)
+        dance = entry.options.get(CONF_DANCE, False)
 
         # Dedupe on everything that affects the rendered frame; force a periodic
-        # re-push so a rebooted/desynced panel recovers. (Flash threshold matters
-        # because it decides whether we send a blinking 2-frame animation.)
+        # re-push so a rebooted/desynced panel recovers. (Flash threshold + dance
+        # matter because they decide which animation we send.)
         sig = (s_pct, w_pct, credits_txt, session_reset, week_reset, clock_txt,
-               invert, flash_threshold)
+               invert, flash_threshold, dance)
         if (sig == entry_data.get("last_sig")
                 and (now_mono - entry_data.get("last_push", 0.0)) < CLAUDE_REPUSH_HEARTBEAT):
             return
@@ -134,6 +135,7 @@ def _apply_claude(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str,
                 session=s_pct, week=w_pct, credits_txt=credits_txt,
                 session_reset=session_reset, week_reset=week_reset,
                 clock_txt=clock_txt, invert=invert, flash_threshold=flash_threshold,
+                dance=dance,
             )
         )
         ok = await pixoo.async_send_animation(session, ip, frames, entry_data, speed=speed)

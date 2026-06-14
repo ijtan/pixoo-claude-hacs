@@ -11,7 +11,7 @@ from homeassistant.core import callback
 
 from . import pixoo
 from .const import (
-    CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE,
+    CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE, CONF_DANCE,
     CONF_FLASH_THRESHOLD, CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME,
     CONF_SHOW_CLOCK, DOMAIN,
 )
@@ -82,6 +82,7 @@ class PixooClaudeOptionsFlow(OptionsFlow):
                     CONF_CLOUD_WHEN_IDLE: user_input.get(CONF_CLOUD_WHEN_IDLE, False),
                     CONF_INVERT:          user_input.get(CONF_INVERT, False),
                     CONF_FLASH_THRESHOLD: user_input.get(CONF_FLASH_THRESHOLD, 95),
+                    CONF_DANCE:           user_input.get(CONF_DANCE, False),
                     CONF_SHOW_CLOCK:      user_input.get(CONF_SHOW_CLOCK, True),
                     CONF_BRIGHTNESS:      user_input.get(CONF_BRIGHTNESS, 80),
                 })
@@ -93,6 +94,7 @@ class PixooClaudeOptionsFlow(OptionsFlow):
             vol.Optional(CONF_INVERT, default=opts.get(CONF_INVERT, False)): bool,
             vol.Optional(CONF_FLASH_THRESHOLD, default=opts.get(CONF_FLASH_THRESHOLD, 95)):
                 vol.All(int, vol.Range(min=50, max=100)),
+            vol.Optional(CONF_DANCE, default=opts.get(CONF_DANCE, False)): bool,
             vol.Optional(CONF_SHOW_CLOCK, default=opts.get(CONF_SHOW_CLOCK, True)): bool,
             vol.Optional(CONF_BRIGHTNESS, default=opts.get(CONF_BRIGHTNESS, 80)):
                 vol.All(int, vol.Range(min=0, max=100)),

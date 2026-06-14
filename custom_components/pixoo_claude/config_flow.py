@@ -11,8 +11,8 @@ from homeassistant.core import callback
 
 from . import pixoo
 from .const import (
-    CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_IP_ADDRESS, CONF_NAME,
-    CONF_SHOW_CLOCK, DOMAIN,
+    CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE, CONF_INVERT,
+    CONF_IP_ADDRESS, CONF_NAME, CONF_SHOW_CLOCK, DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,14 +77,18 @@ class PixooClaudeOptionsFlow(OptionsFlow):
                     data={**self.config_entry.data, CONF_IP_ADDRESS: new_ip},
                 )
                 return self.async_create_entry(title="", data={
-                    CONF_CLAUDE_ENABLED: user_input.get(CONF_CLAUDE_ENABLED, True),
-                    CONF_SHOW_CLOCK:     user_input.get(CONF_SHOW_CLOCK, True),
-                    CONF_BRIGHTNESS:     user_input.get(CONF_BRIGHTNESS, 80),
+                    CONF_CLAUDE_ENABLED:  user_input.get(CONF_CLAUDE_ENABLED, True),
+                    CONF_CLOUD_WHEN_IDLE: user_input.get(CONF_CLOUD_WHEN_IDLE, False),
+                    CONF_INVERT:          user_input.get(CONF_INVERT, False),
+                    CONF_SHOW_CLOCK:      user_input.get(CONF_SHOW_CLOCK, True),
+                    CONF_BRIGHTNESS:      user_input.get(CONF_BRIGHTNESS, 80),
                 })
 
         schema = vol.Schema({
             vol.Required(CONF_IP_ADDRESS, default=current_ip): str,
             vol.Optional(CONF_CLAUDE_ENABLED, default=opts.get(CONF_CLAUDE_ENABLED, True)): bool,
+            vol.Optional(CONF_CLOUD_WHEN_IDLE, default=opts.get(CONF_CLOUD_WHEN_IDLE, False)): bool,
+            vol.Optional(CONF_INVERT, default=opts.get(CONF_INVERT, False)): bool,
             vol.Optional(CONF_SHOW_CLOCK, default=opts.get(CONF_SHOW_CLOCK, True)): bool,
             vol.Optional(CONF_BRIGHTNESS, default=opts.get(CONF_BRIGHTNESS, 80)):
                 vol.All(int, vol.Range(min=0, max=100)),

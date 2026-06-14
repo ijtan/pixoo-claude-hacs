@@ -19,8 +19,9 @@ from homeassistant.util import dt as dt_util
 
 from . import pixoo
 from .const import (
-    CLAUDE_REPUSH_HEARTBEAT, CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_IP_ADDRESS,
-    CONF_NAME, CONF_SHOW_CLOCK, DOMAIN, PUSH_TICK_SECONDS,
+    CLAUDE_REPUSH_HEARTBEAT, CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED,
+    CONF_CLOUD_WHEN_IDLE, CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME,
+    CONF_SHOW_CLOCK, DOMAIN, PUSH_TICK_SECONDS,
 )
 from .helpers import (
     find_claude_entities, is_truthy_state, parse_float, reset_countdown_coarse,
@@ -46,11 +47,16 @@ def _apply_claude(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str,
             unsub()
             entry_data[key] = None
 
-    if not entry.options.get(CONF_CLAUDE_ENABLED, True):
-        return
-
     ip: str = entry_data["ip_address"]
     session = async_get_clientsession(hass)
+
+    if not entry.options.get(CONF_CLAUDE_ENABLED, True):
+        # Master toggle off — hand the panel back to the cloud channel instead
+        # of freezing the last Claude frame on screen.
+        hass.async_create_task(pixoo.async_set_channel(session, ip, pixoo.CHANNEL_CLOUD))
+        return
+
+
     entry_data["last_sig"] = None
     entry_data["last_push"] = 0.0
 
@@ -71,6 +77,20 @@ def _apply_claude(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str,
         w_pct = week_pct if week_pct is not None else 0
         s_full = session_pct is not None and session_pct >= 100
         w_full = week_pct is not None and week_pct >= 100
+
+        now_mono = time.monotonic()
+
+        # Idle fallback: with no active session usage, optionally hand the panel
+        # back to the cloud channel instead of pushing a zeroed Claude frame.
+        if entry.options.get(CONF_CLOUD_WHEN_IDLE, False) and s_pct <= 0:
+            idle_sig = ("cloud",)
+            if (idle_sig == entry_data.get("last_sig")
+                    and (now_mono - entry_data.get("last_push", 0.0)) < CLAUDE_REPUSH_HEARTBEAT):
+                return
+            if await pixoo.async_set_channel(session, ip, pixoo.CHANNEL_CLOUD):
+                entry_data["last_sig"] = idle_sig
+                entry_data["last_push"] = now_mono
+            return
 
         # Extra/credits surface only once a limit is hit and overflow has started.
         extra_enabled = (
@@ -95,10 +115,11 @@ def _apply_claude(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str,
             now = dt_util.now()
             clock_txt = f"{now.hour}:{now.minute:02d}"
 
+        invert = entry.options.get(CONF_INVERT, False)
+
         # Dedupe on everything that affects the rendered frame; force a periodic
         # re-push so a rebooted/desynced panel recovers.
-        sig = (s_pct, w_pct, credits_txt, session_reset, week_reset, clock_txt)
-        now_mono = time.monotonic()
+        sig = (s_pct, w_pct, credits_txt, session_reset, week_reset, clock_txt, invert)
         if (sig == entry_data.get("last_sig")
                 and (now_mono - entry_data.get("last_push", 0.0)) < CLAUDE_REPUSH_HEARTBEAT):
             return
@@ -107,7 +128,7 @@ def _apply_claude(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str,
             lambda: build_gif_payload(
                 session=s_pct, week=w_pct, credits_txt=credits_txt,
                 session_reset=session_reset, week_reset=week_reset,
-                clock_txt=clock_txt,
+                clock_txt=clock_txt, invert=invert,
             )
         )
         ok = await pixoo.async_send_frame(session, ip, payload)

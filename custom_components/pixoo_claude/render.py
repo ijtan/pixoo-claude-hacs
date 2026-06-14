@@ -158,23 +158,29 @@ def _draw_header(fb, clock_txt):
         fb.text(W - MARGIN - text_w(clock_txt), 2, clock_txt, GREY)
 
 
-def _draw_bar_block(fb, yb, icon_name, pct, reset_txt):
-    """A labelled bar with its reset countdown tucked underneath."""
-    col = bar_color(pct)
+def _draw_bar_block(fb, yb, icon_name, pct, reset_txt, invert=False):
+    """A labelled bar with its reset countdown tucked underneath.
+
+    Color and fill always track how *low* you are: usage-based color (red as you
+    run out) and, in invert mode, the bar shows REMAINING (100-usage) so it
+    shrinks and reddens as the metric is consumed.
+    """
+    col = bar_color(pct)                         # danger color from usage
+    shown = max(0, min(100, (100 - pct) if invert else pct))
     fb.icon(MARGIN, yb + 1, icon_name, WHITE)
     bx0, bx1 = 12, 49
     by0, by1 = yb + 2, yb + 6                    # thin 5px bar
     fb.rect(bx0, by0, bx1, by1, DIM)            # track
     span = bx1 - bx0
-    fillx = bx0 + int(round(span * min(pct, 100) / 100.0))
+    fillx = bx0 + int(round(span * shown / 100.0))
     fb.rect(bx0, by0, fillx, by1, col)          # fill
-    fb.text(W - MARGIN - text_w(f"{pct}%"), by0, f"{pct}%", WHITE)
+    fb.text(W - MARGIN - text_w(f"{shown}%"), by0, f"{shown}%", WHITE)
     if reset_txt:
         fb.text(12, by1 + 3, reset_txt, GREY)
 
 
 def render(session, week, credits_txt="", session_reset="", week_reset="",
-           clock_txt="", flash_on=True) -> Image.Image:
+           clock_txt="", flash_on=True, invert=False) -> Image.Image:
     """
     Adaptive Claude-usage screen.
       Normal (nothing maxed): Session + Week bars, each with its own reset time.
@@ -190,9 +196,9 @@ def render(session, week, credits_txt="", session_reset="", week_reset="",
 
     if full is None:
         _draw_bar_block(fb, 12, "bolt", session,
-                        ("RESETS " + session_reset) if session_reset else "")
+                        ("RESETS " + session_reset) if session_reset else "", invert)
         _draw_bar_block(fb, 38, "cal", week,
-                        ("RESETS " + week_reset) if week_reset else "")
+                        ("RESETS " + week_reset) if week_reset else "", invert)
     else:
         icon_name, label, reset_txt = full
         fb.icon(MARGIN, 13, icon_name, WHITE)

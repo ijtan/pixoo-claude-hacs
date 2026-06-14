@@ -9,6 +9,8 @@ CONF_NAME = "name"
 CONF_CLAUDE_ENABLED = "claude_enabled"
 CONF_BRIGHTNESS = "brightness"
 CONF_SHOW_CLOCK = "show_clock"
+CONF_CLOUD_WHEN_IDLE = "cloud_when_idle"
+CONF_INVERT = "invert"  # show remaining (100-usage) instead of usage
 
 # ── hass-claude-usage integration (https://github.com/trickv/hass-claude-usage) ──
 # Reused verbatim from the mini_screen_esp32 integration so the Pixoo reads the

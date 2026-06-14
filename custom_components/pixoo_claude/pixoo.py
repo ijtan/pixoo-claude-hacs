@@ -4,6 +4,7 @@ The Pixoo exposes a JSON command endpoint at http://<ip>:80/post. We use:
   • Draw/ResetHttpGifId  — reset the GIF id before a fresh frame
   • Draw/SendHttpGif     — push a 64x64 RGB frame (base64 in PicData)
   • Channel/SetBrightness
+  • Channel/SetIndex     — hand the panel back to a built-in channel
   • Device/GetDeviceTime — cheap reachability probe
 """
 from __future__ import annotations
@@ -15,6 +16,12 @@ from typing import Any
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
+
+# Built-in Pixoo channels (Channel/SetIndex → SelectIndex).
+CHANNEL_FACES = 0       # clock faces
+CHANNEL_CLOUD = 1       # Divoom online gallery
+CHANNEL_VISUALIZER = 2
+CHANNEL_CUSTOM = 3
 
 # Frames are ~16 KB and the panel can be slow/lossy over weak WiFi — be patient.
 _POST_TIMEOUT = aiohttp.ClientTimeout(total=30)
@@ -71,6 +78,20 @@ async def async_set_brightness(
     """Set panel brightness (0-100)."""
     level = max(0, min(100, int(level)))
     await async_post(session, ip, {"Command": "Channel/SetBrightness", "Brightness": level})
+
+
+async def async_set_channel(
+    session: aiohttp.ClientSession, ip: str, index: int = CHANNEL_CLOUD
+) -> bool:
+    """Switch the panel to a built-in channel (e.g. the cloud gallery).
+
+    Used to hand the screen back when we have nothing to show, instead of
+    leaving a stale Claude frame frozen on the panel. Returns True on ack.
+    """
+    result = await async_post(
+        session, ip, {"Command": "Channel/SetIndex", "SelectIndex": int(index)}
+    )
+    return result is not None and result.get("error_code", 0) == 0
 
 
 async def async_reachable(ip: str) -> bool:

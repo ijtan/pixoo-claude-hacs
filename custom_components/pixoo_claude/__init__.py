@@ -20,13 +20,13 @@ from homeassistant.util import dt as dt_util
 from . import pixoo
 from .const import (
     CLAUDE_REPUSH_HEARTBEAT, CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED,
-    CONF_CLOUD_WHEN_IDLE, CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME,
-    CONF_SHOW_CLOCK, DOMAIN, PUSH_TICK_SECONDS,
+    CONF_CLOUD_WHEN_IDLE, CONF_FLASH_THRESHOLD, CONF_INVERT, CONF_IP_ADDRESS,
+    CONF_NAME, CONF_SHOW_CLOCK, DOMAIN, PUSH_TICK_SECONDS,
 )
 from .helpers import (
     find_claude_entities, is_truthy_state, parse_float, reset_countdown_coarse,
 )
-from .render import build_gif_payload
+from .render import build_frames
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -116,22 +116,27 @@ def _apply_claude(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str,
             clock_txt = f"{now.hour}:{now.minute:02d}"
 
         invert = entry.options.get(CONF_INVERT, False)
+        flash_threshold = entry.options.get(CONF_FLASH_THRESHOLD, 95)
 
         # Dedupe on everything that affects the rendered frame; force a periodic
-        # re-push so a rebooted/desynced panel recovers.
-        sig = (s_pct, w_pct, credits_txt, session_reset, week_reset, clock_txt, invert)
+        # re-push so a rebooted/desynced panel recovers. (Flash threshold matters
+        # because it decides whether we send a blinking 2-frame animation.)
+        sig = (s_pct, w_pct, credits_txt, session_reset, week_reset, clock_txt,
+               invert, flash_threshold)
         if (sig == entry_data.get("last_sig")
                 and (now_mono - entry_data.get("last_push", 0.0)) < CLAUDE_REPUSH_HEARTBEAT):
             return
 
-        payload = await hass.async_add_executor_job(
-            lambda: build_gif_payload(
+        # Flash is keyed off actual usage (the danger), so it works the same in
+        # invert mode — the displayed/inverted bar just blinks.
+        frames, speed = await hass.async_add_executor_job(
+            lambda: build_frames(
                 session=s_pct, week=w_pct, credits_txt=credits_txt,
                 session_reset=session_reset, week_reset=week_reset,
-                clock_txt=clock_txt, invert=invert,
+                clock_txt=clock_txt, invert=invert, flash_threshold=flash_threshold,
             )
         )
-        ok = await pixoo.async_send_frame(session, ip, payload, entry_data)
+        ok = await pixoo.async_send_animation(session, ip, frames, entry_data, speed=speed)
         if ok:
             entry_data["last_sig"] = sig
             entry_data["last_push"] = now_mono

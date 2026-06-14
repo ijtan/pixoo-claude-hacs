@@ -158,14 +158,18 @@ def _draw_header(fb, clock_txt):
         fb.text(W - MARGIN - text_w(clock_txt), 2, clock_txt, GREY)
 
 
-def _draw_bar_block(fb, yb, icon_name, pct, reset_txt, invert=False):
+def _draw_bar_block(fb, yb, icon_name, pct, reset_txt, invert=False,
+                    flash_on=True, flash_threshold=101):
     """A labelled bar with its reset countdown tucked underneath.
 
     Color and fill always track how *low* you are: usage-based color (red as you
     run out) and, in invert mode, the bar shows REMAINING (100-usage) so it
-    shrinks and reddens as the metric is consumed.
+    shrinks and reddens as the metric is consumed. A bar at/above flash_threshold
+    blinks: its fill is hidden on the "off" frame (flash_on=False).
     """
     col = bar_color(pct)                         # danger color from usage
+    if pct >= flash_threshold and not flash_on:
+        col = DIM                                # blink: hide fill on off-frame
     shown = max(0, min(100, (100 - pct) if invert else pct))
     fb.icon(MARGIN, yb + 1, icon_name, WHITE)
     bx0, bx1 = 12, 49
@@ -180,7 +184,7 @@ def _draw_bar_block(fb, yb, icon_name, pct, reset_txt, invert=False):
 
 
 def render(session, week, credits_txt="", session_reset="", week_reset="",
-           clock_txt="", flash_on=True, invert=False) -> Image.Image:
+           clock_txt="", flash_on=True, invert=False, flash_threshold=101) -> Image.Image:
     """
     Adaptive Claude-usage screen.
       Normal (nothing maxed): Session + Week bars, each with its own reset time.
@@ -196,9 +200,11 @@ def render(session, week, credits_txt="", session_reset="", week_reset="",
 
     if full is None:
         _draw_bar_block(fb, 12, "bolt", session,
-                        ("RESETS " + session_reset) if session_reset else "", invert)
+                        ("RESETS " + session_reset) if session_reset else "",
+                        invert, flash_on, flash_threshold)
         _draw_bar_block(fb, 38, "cal", week,
-                        ("RESETS " + week_reset) if week_reset else "", invert)
+                        ("RESETS " + week_reset) if week_reset else "",
+                        invert, flash_on, flash_threshold)
     else:
         icon_name, label, reset_txt = full
         fb.icon(MARGIN, 13, icon_name, WHITE)
@@ -228,15 +234,21 @@ def image_to_pic_data(img: Image.Image) -> str:
     return base64.b64encode(bytes(data)).decode()
 
 
-def build_gif_payload(**kwargs) -> dict:
-    """Render a frame and wrap it in a Draw/SendHttpGif command payload.
+def build_frames(session, week, credits_txt="", session_reset="", week_reset="",
+                 clock_txt="", invert=False, flash_threshold=101):
+    """Render the screen as base64 PicData frames + the per-frame speed (ms).
 
-    Accepts the same keyword args as render(). Safe to call in an executor.
+    Returns ``(frames, speed)``. When a metric is at/above ``flash_threshold`` or
+    FULL (>=100) it's a 2-frame bright/dim blink the device loops on its own;
+    otherwise a single static frame. Pure Pillow — safe to call in an executor.
     """
-    img = render(**kwargs)
-    return {
-        "Command": "Draw/SendHttpGif",
-        "PicNum": 1, "PicWidth": W, "PicOffset": 0,
-        "PicID": 1, "PicSpeed": 1000,
-        "PicData": image_to_pic_data(img),
-    }
+    kw = dict(session=session, week=week, credits_txt=credits_txt,
+              session_reset=session_reset, week_reset=week_reset,
+              clock_txt=clock_txt, invert=invert, flash_threshold=flash_threshold)
+    hot = (session >= 100 or week >= 100
+           or session >= flash_threshold or week >= flash_threshold)
+    if hot:
+        on = image_to_pic_data(render(flash_on=True, **kw))
+        off = image_to_pic_data(render(flash_on=False, **kw))
+        return [on, off], 500
+    return [image_to_pic_data(render(flash_on=True, **kw))], 1000

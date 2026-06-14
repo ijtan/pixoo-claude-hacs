@@ -11,6 +11,7 @@ CONF_BRIGHTNESS = "brightness"
 CONF_SHOW_CLOCK = "show_clock"
 CONF_CLOUD_WHEN_IDLE = "cloud_when_idle"
 CONF_INVERT = "invert"  # show remaining (100-usage) instead of usage
+CONF_FLASH_THRESHOLD = "flash_threshold"  # blink a bar at/above this % (0=off via 101)
 
 # ── hass-claude-usage integration (https://github.com/trickv/hass-claude-usage) ──
 # Reused verbatim from the mini_screen_esp32 integration so the Pixoo reads the

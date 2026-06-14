@@ -31,6 +31,7 @@
           "claude_enabled": "Show Claude usage",
           "cloud_when_idle": "Use the cloud channel when idle",
           "invert": "Show remaining instead of used",
+          "flash_threshold": "Flash a bar at or above this %",
           "show_clock": "Show the clock",
           "brightness": "Brightness"
         },
@@ -39,6 +40,7 @@
           "claude_enabled": "Master switch. When off, the panel is handed back to the Divoom cloud channel instead of holding a stale frame.",
           "cloud_when_idle": "When there's no active session (usage at 0%), switch to the Divoom cloud channel and return automatically once usage picks up.",
           "invert": "Display how much is left (100 − used %) rather than how much has been used. Bars still turn red as you run low.",
+          "flash_threshold": "A bar blinks once usage reaches this percentage (a 100%/FULL bar always flashes). Set to 100 to only flash when maxed.",
           "show_clock": "Show the current time in the top-right of the header.",
           "brightness": "Panel brightness, 0–100."
         }

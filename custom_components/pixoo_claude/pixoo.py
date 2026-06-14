@@ -82,29 +82,51 @@ async def async_reset_gif_id(session: aiohttp.ClientSession, ip: str) -> None:
     await async_post(session, ip, {"Command": "Draw/ResetHttpGifId"})
 
 
-async def async_send_frame(
-    session: aiohttp.ClientSession, ip: str, gif_payload: dict[str, Any],
-    state: dict[str, Any], retries: int = 2,
+async def async_send_animation(
+    session: aiohttp.ClientSession, ip: str, frames: list[str],
+    state: dict[str, Any], speed: int = 1000, width: int = 64, retries: int = 2,
 ) -> bool:
-    """Push a Draw/SendHttpGif frame with a monotonically incrementing PicID.
+    """Push a (possibly multi-frame) animation via Draw/SendHttpGif.
 
-    `state` is a per-device dict we use to persist the GIF counter across calls.
-    The id is synced from the device on first use and the GIF buffer is reset
-    only every REFRESH_COUNTER_LIMIT frames. Returns True on ack (error_code 0).
+    `frames` is a list of base64 PicData strings — one entry is just a static
+    image. All frames of a push share one device-synced, incrementing PicID and
+    are sent one POST each (PicOffset 0..N-1, PicNum = N, PicSpeed = ms/frame);
+    the device then loops them on its own. The GIF buffer is reset only every
+    REFRESH_COUNTER_LIMIT frames. `state` persists the counter across calls.
+    Returns True only if every frame acked (error_code 0).
     """
+    if not frames:
+        return False
+
     counter = state.get("gif_counter")
     if counter is None:
         synced = await async_get_gif_id(session, ip)
         counter = synced if synced is not None else 0
 
+    num = len(frames)
     ok = False
     for attempt in range(1, retries + 1):
         counter += 1
         if counter >= REFRESH_COUNTER_LIMIT:
             await async_reset_gif_id(session, ip)
             counter = 1
-        result = await async_post(session, ip, {**gif_payload, "PicID": counter})
-        if result is not None and result.get("error_code", 0) == 0:
+
+        all_acked = True
+        for offset, pic_data in enumerate(frames):
+            result = await async_post(session, ip, {
+                "Command": "Draw/SendHttpGif",
+                "PicNum": num,
+                "PicWidth": width,
+                "PicOffset": offset,
+                "PicID": counter,
+                "PicSpeed": speed,
+                "PicData": pic_data,
+            })
+            if result is None or result.get("error_code", 0) != 0:
+                all_acked = False
+                break
+
+        if all_acked:
             ok = True
             break
         if attempt < retries:
@@ -112,8 +134,8 @@ async def async_send_frame(
 
     state["gif_counter"] = counter
     if not ok:
-        _LOGGER.warning("Pixoo at %s did not accept the frame after %d attempt(s)",
-                        ip, retries)
+        _LOGGER.warning("Pixoo at %s did not accept the %d-frame animation after %d attempt(s)",
+                        ip, num, retries)
     return ok
 
 

@@ -267,3 +267,36 @@ def build_frames(session, week, credits_txt="", session_reset="", week_reset="",
                   for off in DANCE_OFFSETS]
         return frames, 220
     return [image_to_pic_data(render(**kw))], 1000
+
+
+def render_sensor(label, pct, value_txt="", flash_on=True, over=False) -> Image.Image:
+    """A generic monitored-sensor page: title, one wide bar, big value.
+
+    `pct` drives the bar fill + color; `value_txt` is shown big (falls back to
+    "<pct>%"); `over` (value at/above its alert threshold) blinks the bar.
+    """
+    fb = FB()
+    pct = max(0, min(100, int(pct)))
+    fb.text(MARGIN, 3, (label or "").upper()[:15], WHITE)
+
+    col = bar_color(pct)
+    if over and not flash_on:
+        col = DIM                                # blink the bar on the off-frame
+    bx0, bx1 = MARGIN, W - MARGIN - 1
+    by0, by1 = 24, 33                            # wide 10px bar
+    fb.rect(bx0, by0, bx1, by1, DIM)             # track
+    fillx = bx0 + int(round((bx1 - bx0) * pct / 100.0))
+    fb.rect(bx0, by0, fillx, by1, col)           # fill
+
+    vt = (value_txt.strip() if value_txt else f"{pct}%")[:10]
+    fb.text_scaled(max(MARGIN, (W - text_w(vt, 2)) // 2), 44, vt, WHITE, 2)
+    return fb.img
+
+
+def build_sensor_frames(label, pct, value_txt="", over=False):
+    """Sensor page as base64 frames + speed. 2-frame blink when `over`, else 1."""
+    if over:
+        on = image_to_pic_data(render_sensor(label, pct, value_txt, flash_on=True, over=True))
+        off = image_to_pic_data(render_sensor(label, pct, value_txt, flash_on=False, over=True))
+        return [on, off], 500
+    return [image_to_pic_data(render_sensor(label, pct, value_txt))], 1000

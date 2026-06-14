@@ -34,6 +34,43 @@ def is_truthy_state(state_value: Any) -> bool:
     return str(state_value).strip().lower() in {"true", "on", "1", "yes", "enabled"}
 
 
+def state_to_percent(state_value: Any, min_value: float, max_value: float) -> int:
+    """Scale a raw sensor value into a 0-100 percentage (clamped)."""
+    raw = parse_float(state_value)
+    if raw is None:
+        return 0
+    span = max_value - min_value
+    if span == 0:
+        return 0
+    return max(0, min(100, int(round((raw - min_value) / span * 100.0))))
+
+
+def threshold_to_pct(
+    raw: float, value_type: str, min_value: float, max_value: float
+) -> int:
+    """Convert a configured threshold (raw or %) to a 0-100 percentage."""
+    if value_type == "raw":
+        return state_to_percent(raw, min_value, max_value)
+    return max(0, min(100, int(round(raw))))
+
+
+def monitor_value_text(
+    hass: HomeAssistant, entity_id: str, state_value: Any, value_type: str, unit: str
+) -> str:
+    """Text shown under a monitored sensor's bar.
+
+    Percentage mode → "" (the renderer shows "<pct>%"); raw mode → the raw value
+    with a unit suffix (explicit unit, else the entity's own unit_of_measurement).
+    """
+    if value_type != "raw":
+        return ""
+    suffix = unit.strip()
+    if not suffix:
+        state = hass.states.get(entity_id)
+        suffix = state.attributes.get("unit_of_measurement", "") if state else ""
+    return f"{state_value} {suffix}".strip()
+
+
 def find_claude_entities(hass: HomeAssistant) -> dict[str, str]:
     """Locate the hass-claude-usage sensors via the entity registry.
 

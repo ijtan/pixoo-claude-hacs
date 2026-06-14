@@ -145,12 +145,6 @@ def _apply_claude(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str,
     _LOGGER.debug("Pixoo Claude loop started for %s", ip)
 
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the Pixoo Claude component."""
-    hass.data.setdefault(DOMAIN, {})
-    return True
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Pixoo Claude from a config entry."""
     hass.data.setdefault(DOMAIN, {})

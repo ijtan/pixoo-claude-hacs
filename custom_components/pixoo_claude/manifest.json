@@ -1,13 +1,13 @@
 {
   "domain": "pixoo_claude",
   "name": "Pixoo Claude",
-  "version": "1.0.1",
+  "codeowners": ["@ijtan"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/ijtan/pixoo-claude-hacs",
   "integration_type": "hub",
   "iot_class": "local_push",
-  "config_flow": true,
-  "documentation": "https://github.com/ijtan/pixoo-claude-hacs",
   "issue_tracker": "https://github.com/ijtan/pixoo-claude-hacs/issues",
   "requirements": [],
-  "dependencies": [],
-  "codeowners": ["@ijtan"]
+  "version": "1.0.1"
 }

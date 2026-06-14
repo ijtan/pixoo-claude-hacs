@@ -5,6 +5,12 @@ on:
     branches:
       - main
       - master
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - '.gitattributes'
+      - '.github/**'
 
 jobs:
   release:

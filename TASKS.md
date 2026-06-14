@@ -25,5 +25,21 @@ Shared prerequisite for both tasks below:
 > Possible follow-up (not planned): true limb/pose animation would need new
 > sprite frames and sign-off on the pixels, since it reshapes `CLAUDE_GUY`.
 
+## Monitored sensors — done
+
+- [x] Add sensors via **config subentries** + `EntitySelector` (the HA-idiomatic
+      pattern, mirrors the mini-screen): entity, label, min/max, percentage/raw,
+      alert threshold. Reconfigure + remove supported.
+- [x] Generic **sensor render page** (title + wide bar + big value); reuses the
+      flash blink when a value is at/above its threshold.
+- [x] **Page-rotation** display loop: Claude usage + one page per available
+      sensor, advancing every `page_seconds` (option, default 8). Watched-entity
+      changes re-render the current page without advancing; nothing to show →
+      cloud channel (when enabled).
+
+> Follow-ups (not planned yet): alert-priority mode (a breached sensor jumps the
+> queue instead of waiting its turn); >2-bar combined sensor page; per-sensor
+> icon/color. Arbitrary-sensor support + sensor-bars screen are now covered.
+
 > Deferred (see ideas.md): ticking seconds via per-interval GIF baking — fragile
 > on flaky WiFi + the loop-vs-advance mismatch.

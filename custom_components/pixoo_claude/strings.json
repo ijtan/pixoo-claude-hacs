@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Pixoo Claude",
+        "description": "Show Claude usage on a Divoom Pixoo 64.",
+        "data": {
+          "name": "Name",
+          "ip_address": "Pixoo IP address"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the Pixoo at that IP address."
+    },
+    "abort": {
+      "already_configured": "This Pixoo is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pixoo Claude options",
+        "data": {
+          "ip_address": "Pixoo IP address",
+          "claude_enabled": "Show Claude usage",
+          "show_clock": "Show clock in header",
+          "brightness": "Brightness (0-100)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the Pixoo at that IP address."
+    }
+  }
+}

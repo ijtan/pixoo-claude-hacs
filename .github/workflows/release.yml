@@ -1,0 +1,97 @@
+name: Auto Release on Push
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          LATEST=$(git tag --sort=-v:refname | head -n 1)
+          if [ -z "$LATEST" ]; then
+            LATEST="1.0.0"
+            echo "has_tag=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_tag=true" >> $GITHUB_OUTPUT
+          fi
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+
+      - name: Build release notes
+        run: |
+          LATEST="${{ steps.get_tag.outputs.latest }}"
+
+          if [ "${{ steps.get_tag.outputs.has_tag }}" = "true" ]; then
+            RANGE="$LATEST..HEAD"
+            mapfile -t SUBJECTS < <(git log --reverse --pretty=format:'%s' "$RANGE")
+          else
+            mapfile -t SUBJECTS < <(git log --reverse --pretty=format:'%s')
+          fi
+
+          echo "## Changes" > release_notes.md
+          echo >> release_notes.md
+
+          HAS_CHANGES=false
+
+          for subject in "${SUBJECTS[@]}"; do
+            subject=$(echo "$subject" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+
+            if [ -z "$subject" ]; then
+              continue
+            fi
+
+            if echo "$subject" | grep -Eqi '^(Merge pull request|Merge branch|chore: bump version to )'; then
+              continue
+            fi
+
+            echo "- $subject" >> release_notes.md
+            HAS_CHANGES=true
+          done
+
+          if [ "$HAS_CHANGES" = "false" ]; then
+            echo "- Maintenance release" >> release_notes.md
+          fi
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          LATEST="${{ steps.get_tag.outputs.latest }}"
+          MAJOR=$(echo $LATEST | cut -d. -f1)
+          MINOR=$(echo $LATEST | cut -d. -f2)
+          PATCH=$(echo $LATEST | cut -d. -f3)
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update manifest.json version
+        run: |
+          VERSION="${{ steps.bump.outputs.version }}"
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" custom_components/pixoo_claude/manifest.json
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add custom_components/pixoo_claude/manifest.json
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}" || echo "No changes to commit"
+          git push
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.bump.outputs.version }}
+          name: ${{ steps.bump.outputs.version }}
+          body_path: release_notes.md

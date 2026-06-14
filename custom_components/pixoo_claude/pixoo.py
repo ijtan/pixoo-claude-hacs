@@ -24,8 +24,9 @@ CHANNEL_VISUALIZER = 2
 CHANNEL_CUSTOM = 3
 
 # Frames are ~16 KB and the panel can be slow/lossy over weak WiFi — be patient.
-_POST_TIMEOUT = aiohttp.ClientTimeout(total=30)
-_PROBE_TIMEOUT = aiohttp.ClientTimeout(total=8)
+# Generous timeouts: a slow ack is better than a dropped frame + retry storm.
+_POST_TIMEOUT = aiohttp.ClientTimeout(total=60)
+_PROBE_TIMEOUT = aiohttp.ClientTimeout(total=20)
 
 
 def _url(ip: str) -> str:
@@ -54,7 +55,7 @@ async def async_post(
 
 async def async_send_frame(
     session: aiohttp.ClientSession, ip: str, gif_payload: dict[str, Any],
-    retries: int = 2,
+    retries: int = 3,
 ) -> bool:
     """Reset the GIF id then push a Draw/SendHttpGif frame, with retries.
 
@@ -66,7 +67,7 @@ async def async_send_frame(
         if result is not None and result.get("error_code", 0) == 0:
             return True
         if attempt < retries:
-            await asyncio.sleep(2)
+            await asyncio.sleep(3 * attempt)  # gentle backoff: 3s, 6s
     _LOGGER.warning("Pixoo at %s did not accept the frame after %d attempt(s)",
                     ip, retries)
     return False

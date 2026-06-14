@@ -19,6 +19,35 @@ Refs: [pixoo-rest](https://github.com/4ch1m/pixoo-rest/blob/master/app.py),
 [Grayda/pixoo_api NOTES](https://github.com/Grayda/pixoo_api/blob/main/NOTES.md),
 [SomethingWithComputers/pixoo](https://github.com/SomethingWithComputers/pixoo).
 
+## Device GIF id, "bloat" & the freeze bug
+
+The HTTP-pushed GIF is a **transient display buffer**, not a stored gallery
+item — each push overwrites the panel; nothing accumulates on disk. `PicID` is
+just a sequence number for the current animation, not a filename, and there's no
+recall-by-id, so there's nothing to "re-use".
+
+What *does* build up is an internal counter/buffer: after ~300 frames the
+display can **stop responding** (community-reverse-engineered, not officially
+documented). `Draw/ResetHttpGifId` clears it.
+
+How we stay bounded (see `pixoo.py`):
+
+- **Reset every `REFRESH_COUNTER_LIMIT` (32) frames.** The counter sawtooths
+  1→32→1 — so `PicID` never grows large and **never overflows**; we clear the
+  internal buildup long before the freeze threshold.
+- **Sync on first push** via `Draw/GetHttpGifId` (covers HA restarts), and the
+  every-32 reset re-aligns us even if the *device* reboots underneath us.
+- **Content dedupe** means we only push on change (minute tick / % change), so
+  we creep toward the 32-frame reset slowly — not hammering it.
+
+The device id also resets on a **reboot/power-cycle** (`Device/SysReboot`),
+which is the hard-reset equivalent of `Draw/ResetHttpGifId`.
+
+**Troubleshooting lever:** if a long-running panel ever gets sluggish, lower
+`REFRESH_COUNTER_LIMIT` (more frequent soft resets) or add a periodic
+`Device/SysReboot`. The "32" figure is inherited convention, not a guaranteed
+spec.
+
 ### Loop-safe animations — good fit (deferred, not rejected)
 Anything where *repeating looks correct* is ideal: send once, let it loop, no
 timing needed (the 120s heartbeat re-push is enough).

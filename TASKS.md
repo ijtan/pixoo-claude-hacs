@@ -39,11 +39,16 @@ Shared prerequisite for both tasks below:
 
 - [x] **Combined sensor page** — up to 2 monitored sensors per page (stacked
       bars) instead of one-per-page; a single sensor is centred. Fewer rotations.
+- [x] **Alert-priority mode** (`alert_priority`, default on) — a breached sensor
+      takes over: show only over-threshold sensor(s) until they clear, skipping
+      Claude + calm sensors.
+- [x] **Per-sensor icon + accent color** — `icon` (none/bolt/cal/star/dot/square)
+      and `color` per monitored sensor, applied to the icon + label; bar keeps
+      its danger color.
 
-> Follow-ups (not planned yet): alert-priority mode (a breached sensor jumps the
-> queue instead of waiting its turn); per-sensor icon/color; possibly >2 bars on
-> a page if labels stay legible. Arbitrary-sensor support + sensor-bars screen
-> are covered.
+> Follow-ups (not planned yet): possibly >2 bars on a page if labels stay
+> legible; richer icon set (needs pixel-art + on-device preview). Arbitrary
+> sensors, sensor-bars screen, rotation, alerts, and styling are all covered.
 
 > Deferred (see ideas.md): ticking seconds via per-interval GIF baking — fragile
 > on flaky WiFi + the loop-vs-advance mismatch.

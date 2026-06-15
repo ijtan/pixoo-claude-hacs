@@ -237,10 +237,19 @@ def _apply_display(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str
             entry_data["last_push"] = now_mono
 
     async def _guarded_refresh(advance: bool) -> None:
+        # Only one render+push in flight at a time. Without this, a timer tick,
+        # a state-change, or an options/subentry restart can each spawn a push
+        # while a previous (slow, multi-frame) push is still going — the frames
+        # interleave on the panel and it flickers between pages/states.
+        if entry_data.get("refreshing"):
+            return
+        entry_data["refreshing"] = True
         try:
             await _refresh(advance)
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Pixoo display: refresh failed")
+        finally:
+            entry_data["refreshing"] = False
 
     @callback
     def _tick(_now: Any) -> None:
@@ -285,6 +294,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "page_index": 0,
         "gif_counter": None,  # synced from the device on first frame push
         "alerting": set(),    # entity_ids latched in alert (hysteresis)
+        "refreshing": False,  # in-flight guard: one render+push at a time
     }
     hass.data[DOMAIN][entry.entry_id] = entry_data
 

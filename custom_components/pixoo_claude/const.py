@@ -43,3 +43,8 @@ CLAUDE_KEYS = {
 # only when the rendered content changes — plus a periodic recovery re-push.
 PUSH_TICK_SECONDS = 15          # how often we re-evaluate (minute boundary, state)
 CLAUDE_REPUSH_HEARTBEAT = 120   # force a re-push at least this often (recovery)
+
+# Hysteresis for monitored-sensor alerts: once a sensor trips its threshold it
+# stays "in alert" until it falls this many percentage points below it, so a
+# value hovering around the threshold doesn't flap the display in and out.
+ALERT_RELEASE_MARGIN = 5

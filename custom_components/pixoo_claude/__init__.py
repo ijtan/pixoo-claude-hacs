@@ -17,9 +17,9 @@ from homeassistant.util import dt as dt_util
 
 from . import pixoo
 from .const import (
-    CLAUDE_REPUSH_HEARTBEAT, CONF_ALERT_PRIORITY, CONF_BARS_PER_PAGE,
-    CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE, CONF_DANCE,
-    CONF_FLASH_THRESHOLD, CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME,
+    ALERT_RELEASE_MARGIN, CLAUDE_REPUSH_HEARTBEAT, CONF_ALERT_PRIORITY,
+    CONF_BARS_PER_PAGE, CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE,
+    CONF_DANCE, CONF_FLASH_THRESHOLD, CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME,
     CONF_PAGE_SECONDS, CONF_SHOW_CLOCK, DOMAIN, SUBENTRY_TYPE_MONITOR,
 )
 from .helpers import (
@@ -153,7 +153,17 @@ def _apply_display(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str
         else:
             pct = max(0, min(100, int(round(parse_float(st.state)))))
         value_txt = monitor_value_text(hass, entity_id, st.state, value_type, unit)
-        over = threshold > 0 and pct >= threshold_to_pct(threshold, value_type, min_v, max_v)
+        # Hysteresis: trip at the threshold, but stay latched until the value
+        # falls ALERT_RELEASE_MARGIN below it — stops flapping when a settled
+        # value hovers around the line.
+        alerting = entry_data.setdefault("alerting", set())
+        if threshold <= 0:
+            over = False
+        else:
+            trigger = threshold_to_pct(threshold, value_type, min_v, max_v)
+            release = max(0, trigger - ALERT_RELEASE_MARGIN)
+            over = pct >= (release if entity_id in alerting else trigger)
+        alerting.add(entity_id) if over else alerting.discard(entity_id)
         icon = cfg.get("icon", "none")
         icon = None if icon in (None, "", "none") else icon
         color = cfg.get("color", "white")
@@ -274,6 +284,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "last_push": 0.0,
         "page_index": 0,
         "gif_counter": None,  # synced from the device on first frame push
+        "alerting": set(),    # entity_ids latched in alert (hysteresis)
     }
     hass.data[DOMAIN][entry.entry_id] = entry_data
 

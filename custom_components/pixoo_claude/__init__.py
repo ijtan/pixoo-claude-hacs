@@ -17,10 +17,10 @@ from homeassistant.util import dt as dt_util
 
 from . import pixoo
 from .const import (
-    CLAUDE_REPUSH_HEARTBEAT, CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED,
-    CONF_CLOUD_WHEN_IDLE, CONF_DANCE, CONF_FLASH_THRESHOLD, CONF_INVERT,
-    CONF_IP_ADDRESS, CONF_NAME, CONF_PAGE_SECONDS, CONF_SHOW_CLOCK, DOMAIN,
-    SUBENTRY_TYPE_MONITOR,
+    CLAUDE_REPUSH_HEARTBEAT, CONF_ALERT_PRIORITY, CONF_BRIGHTNESS,
+    CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE, CONF_DANCE, CONF_FLASH_THRESHOLD,
+    CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME, CONF_PAGE_SECONDS, CONF_SHOW_CLOCK,
+    DOMAIN, SUBENTRY_TYPE_MONITOR,
 )
 from .helpers import (
     find_claude_entities, is_truthy_state, monitor_value_text, parse_float,
@@ -63,6 +63,7 @@ def _apply_display(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str
     flash_threshold = entry.options.get(CONF_FLASH_THRESHOLD, 95)
     dance = entry.options.get(CONF_DANCE, False)
     page_seconds = max(2, int(entry.options.get(CONF_PAGE_SECONDS, 8)))
+    alert_priority = entry.options.get(CONF_ALERT_PRIORITY, True)
 
     def _monitors() -> list:
         return [s for s in entry.subentries.values()
@@ -152,21 +153,31 @@ def _apply_display(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str
             pct = max(0, min(100, int(round(parse_float(st.state)))))
         value_txt = monitor_value_text(hass, entity_id, st.state, value_type, unit)
         over = threshold > 0 and pct >= threshold_to_pct(threshold, value_type, min_v, max_v)
+        icon = cfg.get("icon", "none")
+        icon = None if icon in (None, "", "none") else icon
+        color = cfg.get("color", "white")
 
-        sig = ("sensor", entity_id, pct, value_txt, over, label)
-        return {"kind": "sensor", "sig": sig,
-                "label": label, "pct": pct, "value_txt": value_txt, "over": over}
+        sig = ("sensor", entity_id, pct, value_txt, over, label, icon, color)
+        return {"kind": "sensor", "sig": sig, "label": label, "pct": pct,
+                "value_txt": value_txt, "over": over, "icon": icon, "color": color}
 
     async def _refresh(advance: bool) -> None:
-        pages: list[dict[str, Any]] = []
-        if claude_enabled:
-            cd = _claude_data()
-            if cd is not None:
-                pages.append(cd)
-        # Monitored sensors share pages — up to 2 bars each.
         rows = [sd for sub in _monitors() if (sd := _sensor_data(sub)) is not None]
-        for i in range(0, len(rows), 2):
-            chunk = rows[i:i + 2]
+        alerts = [r for r in rows if r["over"]]
+
+        pages: list[dict[str, Any]] = []
+        if alert_priority and alerts:
+            # A breached sensor takes over: show only alert rows, skip Claude.
+            sensor_rows = alerts
+        else:
+            sensor_rows = rows
+            if claude_enabled:
+                cd = _claude_data()
+                if cd is not None:
+                    pages.append(cd)
+        # Monitored sensors share pages — up to 2 bars each.
+        for i in range(0, len(sensor_rows), 2):
+            chunk = sensor_rows[i:i + 2]
             sig = ("sensors", tuple(r["sig"] for r in chunk))
             pages.append({"kind": "sensors", "sig": sig, "rows": chunk})
 

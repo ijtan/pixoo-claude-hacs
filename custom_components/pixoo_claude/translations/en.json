@@ -34,6 +34,7 @@
           "flash_threshold": "Flash a bar at or above this %",
           "dance": "Animate the Claude mascot",
           "page_seconds": "Seconds per page",
+          "alert_priority": "Breached sensors take over",
           "show_clock": "Show the clock",
           "brightness": "Brightness"
         },
@@ -45,6 +46,7 @@
           "flash_threshold": "A bar blinks once usage reaches this percentage (a 100%/FULL bar always flashes). Set to 100 to only flash when maxed.",
           "dance": "Give the Claude mascot a gentle idle bob. Pauses while a bar is flashing so the alert stays clear.",
           "page_seconds": "How long each page (Claude usage, then each monitored sensor) stays on screen before rotating.",
+          "alert_priority": "When a monitored sensor crosses its alert threshold, show only the breached sensor(s) until they clear, instead of waiting for their turn in the rotation.",
           "show_clock": "Show the current time in the top-right of the header.",
           "brightness": "Panel brightness, 0–100."
         }
@@ -76,7 +78,9 @@
             "max_value": "Maximum value",
             "value_type": "Value display",
             "unit": "Unit",
-            "threshold": "Alert threshold"
+            "threshold": "Alert threshold",
+            "icon": "Icon",
+            "color": "Accent color"
           },
           "data_description": {
             "entity_id": "The sensor entity to track.",
@@ -85,7 +89,9 @@
             "max_value": "Sensor value that maps to 100% on the bar.",
             "value_type": "Show a percentage or the raw sensor value under the bar.",
             "unit": "Unit suffix for raw display. Leave blank to use the entity's own unit.",
-            "threshold": "Flash the bar at or above this. In Percentage mode enter 0-100; in Raw value mode enter the raw value. Set to 0 for no alert."
+            "threshold": "Flash the bar at or above this. In Percentage mode enter 0-100; in Raw value mode enter the raw value. Set to 0 for no alert.",
+            "icon": "Small icon shown next to the label.",
+            "color": "Accent color for the icon and label (the bar keeps its danger color)."
           }
         },
         "reconfigure": {
@@ -98,7 +104,9 @@
             "max_value": "Maximum value",
             "value_type": "Value display",
             "unit": "Unit",
-            "threshold": "Alert threshold"
+            "threshold": "Alert threshold",
+            "icon": "Icon",
+            "color": "Accent color"
           },
           "data_description": {
             "entity_id": "The sensor entity to track.",
@@ -107,7 +115,9 @@
             "max_value": "Sensor value that maps to 100% on the bar.",
             "value_type": "Show a percentage or the raw sensor value under the bar.",
             "unit": "Unit suffix for raw display. Leave blank to use the entity's own unit.",
-            "threshold": "Flash the bar at or above this. In Percentage mode enter 0-100; in Raw value mode enter the raw value. Set to 0 for no alert."
+            "threshold": "Flash the bar at or above this. In Percentage mode enter 0-100; in Raw value mode enter the raw value. Set to 0 for no alert.",
+            "icon": "Small icon shown next to the label.",
+            "color": "Accent color for the icon and label (the bar keeps its danger color)."
           }
         }
       }

@@ -17,6 +17,7 @@ CONF_INVERT = "invert"  # show remaining (100-usage) instead of usage
 CONF_FLASH_THRESHOLD = "flash_threshold"  # blink a bar at/above this % (0=off via 101)
 CONF_DANCE = "dance"  # animate the Claude critter (idle/normal state only)
 CONF_PAGE_SECONDS = "page_seconds"  # how long each rotating page is shown
+CONF_ALERT_PRIORITY = "alert_priority"  # breached sensors take over the screen
 
 # ── hass-claude-usage integration (https://github.com/trickv/hass-claude-usage) ──
 # Reused verbatim from the mini_screen_esp32 integration so the Pixoo reads the

@@ -17,8 +17,8 @@ from homeassistant.helpers.selector import (
 
 from . import pixoo
 from .const import (
-    CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE, CONF_DANCE,
-    CONF_FLASH_THRESHOLD, CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME,
+    CONF_ALERT_PRIORITY, CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE,
+    CONF_DANCE, CONF_FLASH_THRESHOLD, CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME,
     CONF_PAGE_SECONDS, CONF_SHOW_CLOCK, DOMAIN, SUBENTRY_TYPE_MONITOR,
 )
 
@@ -98,6 +98,7 @@ class PixooClaudeOptionsFlow(OptionsFlow):
                     CONF_FLASH_THRESHOLD: user_input.get(CONF_FLASH_THRESHOLD, 95),
                     CONF_DANCE:           user_input.get(CONF_DANCE, False),
                     CONF_PAGE_SECONDS:    user_input.get(CONF_PAGE_SECONDS, 8),
+                    CONF_ALERT_PRIORITY:  user_input.get(CONF_ALERT_PRIORITY, True),
                     CONF_SHOW_CLOCK:      user_input.get(CONF_SHOW_CLOCK, True),
                     CONF_BRIGHTNESS:      user_input.get(CONF_BRIGHTNESS, 80),
                 })
@@ -112,6 +113,7 @@ class PixooClaudeOptionsFlow(OptionsFlow):
             vol.Optional(CONF_DANCE, default=opts.get(CONF_DANCE, False)): bool,
             vol.Optional(CONF_PAGE_SECONDS, default=opts.get(CONF_PAGE_SECONDS, 8)):
                 vol.All(int, vol.Range(min=2, max=60)),
+            vol.Optional(CONF_ALERT_PRIORITY, default=opts.get(CONF_ALERT_PRIORITY, True)): bool,
             vol.Optional(CONF_SHOW_CLOCK, default=opts.get(CONF_SHOW_CLOCK, True)): bool,
             vol.Optional(CONF_BRIGHTNESS, default=opts.get(CONF_BRIGHTNESS, 80)):
                 vol.All(int, vol.Range(min=0, max=100)),
@@ -149,6 +151,8 @@ class PixooMonitorSubentryFlow(ConfigSubentryFlow):
                 value_type = str(user_input.get("value_type", "percentage"))
                 unit = str(user_input.get("unit", "")).strip()
                 threshold = float(user_input.get("threshold", 0))
+                icon = str(user_input.get("icon", "none"))
+                color = str(user_input.get("color", "white"))
             except (KeyError, TypeError, ValueError):
                 errors["base"] = "invalid_monitor_config"
             else:
@@ -168,6 +172,8 @@ class PixooMonitorSubentryFlow(ConfigSubentryFlow):
                         "value_type": value_type,
                         "unit": unit,
                         "threshold": threshold,
+                        "icon": icon,
+                        "color": color,
                     }
                     if reconfigure:
                         return self.async_update_and_abort(
@@ -189,6 +195,26 @@ class PixooMonitorSubentryFlow(ConfigSubentryFlow):
                 ])),
             vol.Optional("unit", default=existing.get("unit", "")): str,
             vol.Optional("threshold", default=existing.get("threshold", 0)): vol.Coerce(float),
+            vol.Optional("icon", default=existing.get("icon", "none")):
+                SelectSelector(SelectSelectorConfig(options=[
+                    SelectOptionDict(value="none", label="None"),
+                    SelectOptionDict(value="bolt", label="Bolt"),
+                    SelectOptionDict(value="cal", label="Calendar"),
+                    SelectOptionDict(value="star", label="Star"),
+                    SelectOptionDict(value="dot", label="Dot"),
+                    SelectOptionDict(value="square", label="Square"),
+                ])),
+            vol.Optional("color", default=existing.get("color", "white")):
+                SelectSelector(SelectSelectorConfig(options=[
+                    SelectOptionDict(value="white", label="White"),
+                    SelectOptionDict(value="orange", label="Orange"),
+                    SelectOptionDict(value="green", label="Green"),
+                    SelectOptionDict(value="amber", label="Amber"),
+                    SelectOptionDict(value="red", label="Red"),
+                    SelectOptionDict(value="blue", label="Blue"),
+                    SelectOptionDict(value="cyan", label="Cyan"),
+                    SelectOptionDict(value="magenta", label="Magenta"),
+                ])),
         })
         step = "reconfigure" if reconfigure else "user"
         return self.async_show_form(step_id=step, data_schema=schema, errors=errors)

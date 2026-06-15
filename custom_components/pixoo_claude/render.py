@@ -20,6 +20,19 @@ GREY  = (140, 140, 150)          # footer / clock
 RED   = (229, 57, 53)
 CLAUDE_ORANGE = (217, 119, 87)   # Claude brand "clay" orange (#D97757)
 
+# Named accent colors for monitored-sensor labels/icons (bar fill stays the
+# danger-gradient color regardless, so the alert signal is never lost).
+ACCENTS = {
+    "white":   WHITE,
+    "orange":  CLAUDE_ORANGE,
+    "green":   (61, 220, 132),
+    "amber":   (255, 179, 0),
+    "red":     RED,
+    "blue":    (66, 133, 244),
+    "cyan":    (0, 200, 200),
+    "magenta": (220, 80, 200),
+}
+
 
 def bar_color(pct: int):
     """Color thresholds — the whole point of going RGB."""
@@ -67,6 +80,12 @@ ICONS = {
     "star": [  # extra / credits
         "00011000","00011000","01011010","00111100",
         "01111110","00111100","01011010","00011000"],
+    "dot": [   # generic filled marker
+        "00111100","01111110","11111111","11111111",
+        "11111111","11111111","01111110","00111100"],
+    "square": [  # generic hollow marker
+        "11111111","10000001","10000001","10000001",
+        "10000001","10000001","10000001","11111111"],
 }
 
 # The Claude critter (user-tuned). 10px wide (even) so the 4 legs sit symmetric;
@@ -269,13 +288,21 @@ def build_frames(session, week, credits_txt="", session_reset="", week_reset="",
     return [image_to_pic_data(render(**kw))], 1000
 
 
-def _draw_sensor_row(fb, y, label, pct, value_txt="", flash_on=True, over=False):
-    """One monitored-sensor row: label (left) + value (right) over a wide bar."""
+def _draw_sensor_row(fb, y, label, pct, value_txt="", flash_on=True, over=False,
+                     icon=None, accent=WHITE):
+    """One monitored-sensor row: optional icon + label (left) and value (right)
+    over a wide bar. icon/label use the accent color; the bar keeps its
+    danger-gradient color (dimmed on the off-frame when over threshold)."""
     pct = max(0, min(100, int(pct)))
     col = bar_color(pct)
     if over and not flash_on:
         col = DIM                                # blink the bar on the off-frame
-    fb.text(MARGIN, y, (label or "").upper()[:9], WHITE)   # ~9 chars fit
+    lx = MARGIN
+    if icon and icon in ICONS:
+        fb.icon(MARGIN, y, icon, accent)
+        lx = MARGIN + 9
+    maxchars = 7 if lx > MARGIN else 9
+    fb.text(lx, y, (label or "").upper()[:maxchars], accent)
     vt = (value_txt.strip() if value_txt else f"{pct}%")[:6]
     fb.text(W - MARGIN - text_w(vt), y, vt, GREY)
     bx0, bx1 = MARGIN, W - MARGIN - 1
@@ -288,16 +315,17 @@ def _draw_sensor_row(fb, y, label, pct, value_txt="", flash_on=True, over=False)
 def render_sensor_page(rows, flash_on=True) -> Image.Image:
     """A monitored-sensor page showing up to 2 sensor rows (stacked bars).
 
-    `rows` is a list of dicts: {label, pct, value_txt, over}. A single row is
-    vertically centred; two rows stack. A row whose value is over threshold
-    blinks its bar on the off-frame.
+    `rows` is a list of dicts: {label, pct, value_txt, over, icon, color}. A
+    single row is vertically centred; two rows stack. A row whose value is over
+    threshold blinks its bar on the off-frame.
     """
     fb = FB()
     rows = rows[:2]
     ys = [18] if len(rows) == 1 else [2, 34]
     for y, r in zip(ys, rows):
         _draw_sensor_row(fb, y, r.get("label", ""), r.get("pct", 0),
-                         r.get("value_txt", ""), flash_on, r.get("over", False))
+                         r.get("value_txt", ""), flash_on, r.get("over", False),
+                         icon=r.get("icon"), accent=ACCENTS.get(r.get("color", "white"), WHITE))
     return fb.img
 
 

@@ -45,10 +45,12 @@ Shared prerequisite for both tasks below:
 - [x] **Per-sensor icon + accent color** — `icon` (none/bolt/cal/star/dot/square)
       and `color` per monitored sensor, applied to the icon + label; bar keeps
       its danger color.
+- [x] **Configurable bars per page** (`bars_per_page`, 1–4, default 2) — stack up
+      to 4 sensor rows per page; monitors are chunked by it.
 
-> Follow-ups (not planned yet): possibly >2 bars on a page if labels stay
-> legible; richer icon set (needs pixel-art + on-device preview). Arbitrary
-> sensors, sensor-bars screen, rotation, alerts, and styling are all covered.
+> Follow-ups (not planned yet): user-defined "screens" (manual grouping of
+> sensors into named pages) — deferred as too much config for the payoff; richer
+> icon set (needs pixel-art + on-device preview). Everything else is covered.
 
 > Deferred (see ideas.md): ticking seconds via per-interval GIF baking — fragile
 > on flaky WiFi + the loop-vs-advance mismatch.

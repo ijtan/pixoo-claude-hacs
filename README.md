@@ -62,6 +62,7 @@ Open the integration's **Configure** dialog:
 | Animate the Claude mascot | off | Gentle idle bob; pauses while a bar is flashing |
 | Seconds per page | 8 | How long each page stays up before rotating |
 | Breached sensors take over | on | A monitored sensor over its threshold shows alone until it clears, instead of waiting its rotation turn |
+| Sensor bars per page | 2 | How many monitored-sensor bars stack on one page (1–4); more = denser rows |
 | Show the clock | on | Header clock (top-right) |
 | Brightness | 80 | Panel brightness (0–100) |
 

@@ -258,7 +258,9 @@ def image_to_pic_data(img: Image.Image) -> str:
 
 
 # Gentle idle "dance": nudge the critter's position only (silhouette intact).
-DANCE_OFFSETS = [(0, 0), (0, 1), (0, 0), (0, -1)]
+# Kept to 2 frames — each frame is a separate POST and the panel shows a
+# "Loading" screen while it receives a multi-frame GIF, so fewer = shorter.
+DANCE_OFFSETS = [(0, 0), (0, 1)]
 
 
 def build_frames(session, week, credits_txt="", session_reset="", week_reset="",

@@ -26,7 +26,7 @@ from .helpers import (
     find_claude_entities, is_truthy_state, monitor_value_text, parse_float,
     reset_countdown_coarse, state_to_percent, threshold_to_pct,
 )
-from .render import build_frames, build_sensor_frames
+from .render import build_frames, build_sensor_page_frames
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -163,10 +163,12 @@ def _apply_display(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str
             cd = _claude_data()
             if cd is not None:
                 pages.append(cd)
-        for sub in _monitors():
-            sd = _sensor_data(sub)
-            if sd is not None:
-                pages.append(sd)
+        # Monitored sensors share pages — up to 2 bars each.
+        rows = [sd for sub in _monitors() if (sd := _sensor_data(sub)) is not None]
+        for i in range(0, len(rows), 2):
+            chunk = rows[i:i + 2]
+            sig = ("sensors", tuple(r["sig"] for r in chunk))
+            pages.append({"kind": "sensors", "sig": sig, "rows": chunk})
 
         now_mono = time.monotonic()
         if not pages:
@@ -204,9 +206,7 @@ def _apply_display(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str
             )
         else:
             frames, speed = await hass.async_add_executor_job(
-                lambda: build_sensor_frames(
-                    page["label"], page["pct"], page["value_txt"], over=page["over"],
-                )
+                lambda: build_sensor_page_frames(page["rows"])
             )
 
         ok = await pixoo.async_send_animation(session, ip, frames, entry_data, speed=speed)

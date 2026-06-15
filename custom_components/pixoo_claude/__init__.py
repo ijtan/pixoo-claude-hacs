@@ -17,10 +17,10 @@ from homeassistant.util import dt as dt_util
 
 from . import pixoo
 from .const import (
-    CLAUDE_REPUSH_HEARTBEAT, CONF_ALERT_PRIORITY, CONF_BRIGHTNESS,
-    CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE, CONF_DANCE, CONF_FLASH_THRESHOLD,
-    CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME, CONF_PAGE_SECONDS, CONF_SHOW_CLOCK,
-    DOMAIN, SUBENTRY_TYPE_MONITOR,
+    CLAUDE_REPUSH_HEARTBEAT, CONF_ALERT_PRIORITY, CONF_BARS_PER_PAGE,
+    CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE, CONF_DANCE,
+    CONF_FLASH_THRESHOLD, CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME,
+    CONF_PAGE_SECONDS, CONF_SHOW_CLOCK, DOMAIN, SUBENTRY_TYPE_MONITOR,
 )
 from .helpers import (
     find_claude_entities, is_truthy_state, monitor_value_text, parse_float,
@@ -64,6 +64,7 @@ def _apply_display(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str
     dance = entry.options.get(CONF_DANCE, False)
     page_seconds = max(2, int(entry.options.get(CONF_PAGE_SECONDS, 8)))
     alert_priority = entry.options.get(CONF_ALERT_PRIORITY, True)
+    bars_per_page = max(1, min(4, int(entry.options.get(CONF_BARS_PER_PAGE, 2))))
 
     def _monitors() -> list:
         return [s for s in entry.subentries.values()
@@ -175,9 +176,9 @@ def _apply_display(hass: HomeAssistant, entry: ConfigEntry, entry_data: dict[str
                 cd = _claude_data()
                 if cd is not None:
                     pages.append(cd)
-        # Monitored sensors share pages — up to 2 bars each.
-        for i in range(0, len(sensor_rows), 2):
-            chunk = sensor_rows[i:i + 2]
+        # Monitored sensors share pages — up to bars_per_page bars each.
+        for i in range(0, len(sensor_rows), bars_per_page):
+            chunk = sensor_rows[i:i + bars_per_page]
             sig = ("sensors", tuple(r["sig"] for r in chunk))
             pages.append({"kind": "sensors", "sig": sig, "rows": chunk})
 

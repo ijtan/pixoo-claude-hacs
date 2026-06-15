@@ -17,9 +17,10 @@ from homeassistant.helpers.selector import (
 
 from . import pixoo
 from .const import (
-    CONF_ALERT_PRIORITY, CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED, CONF_CLOUD_WHEN_IDLE,
-    CONF_DANCE, CONF_FLASH_THRESHOLD, CONF_INVERT, CONF_IP_ADDRESS, CONF_NAME,
-    CONF_PAGE_SECONDS, CONF_SHOW_CLOCK, DOMAIN, SUBENTRY_TYPE_MONITOR,
+    CONF_ALERT_PRIORITY, CONF_BARS_PER_PAGE, CONF_BRIGHTNESS, CONF_CLAUDE_ENABLED,
+    CONF_CLOUD_WHEN_IDLE, CONF_DANCE, CONF_FLASH_THRESHOLD, CONF_INVERT,
+    CONF_IP_ADDRESS, CONF_NAME, CONF_PAGE_SECONDS, CONF_SHOW_CLOCK, DOMAIN,
+    SUBENTRY_TYPE_MONITOR,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -99,6 +100,7 @@ class PixooClaudeOptionsFlow(OptionsFlow):
                     CONF_DANCE:           user_input.get(CONF_DANCE, False),
                     CONF_PAGE_SECONDS:    user_input.get(CONF_PAGE_SECONDS, 8),
                     CONF_ALERT_PRIORITY:  user_input.get(CONF_ALERT_PRIORITY, True),
+                    CONF_BARS_PER_PAGE:   user_input.get(CONF_BARS_PER_PAGE, 2),
                     CONF_SHOW_CLOCK:      user_input.get(CONF_SHOW_CLOCK, True),
                     CONF_BRIGHTNESS:      user_input.get(CONF_BRIGHTNESS, 80),
                 })
@@ -114,6 +116,8 @@ class PixooClaudeOptionsFlow(OptionsFlow):
             vol.Optional(CONF_PAGE_SECONDS, default=opts.get(CONF_PAGE_SECONDS, 8)):
                 vol.All(int, vol.Range(min=2, max=60)),
             vol.Optional(CONF_ALERT_PRIORITY, default=opts.get(CONF_ALERT_PRIORITY, True)): bool,
+            vol.Optional(CONF_BARS_PER_PAGE, default=opts.get(CONF_BARS_PER_PAGE, 2)):
+                vol.All(int, vol.Range(min=1, max=4)),
             vol.Optional(CONF_SHOW_CLOCK, default=opts.get(CONF_SHOW_CLOCK, True)): bool,
             vol.Optional(CONF_BRIGHTNESS, default=opts.get(CONF_BRIGHTNESS, 80)):
                 vol.All(int, vol.Range(min=0, max=100)),

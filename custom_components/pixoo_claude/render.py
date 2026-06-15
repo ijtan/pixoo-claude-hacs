@@ -312,17 +312,25 @@ def _draw_sensor_row(fb, y, label, pct, value_txt="", flash_on=True, over=False,
     fb.rect(bx0, by0, fillx, by1, col)           # fill
 
 
+def _row_ys(n):
+    """Top y for each of n stacked sensor rows (each row's footprint is ~14px)."""
+    if n <= 1:
+        return [18]
+    slot = H // n
+    pad = max(0, (slot - 14) // 2)               # centre the 14px row in its slot
+    return [i * slot + pad for i in range(n)]
+
+
 def render_sensor_page(rows, flash_on=True) -> Image.Image:
-    """A monitored-sensor page showing up to 2 sensor rows (stacked bars).
+    """A monitored-sensor page showing up to 4 sensor rows (stacked bars).
 
     `rows` is a list of dicts: {label, pct, value_txt, over, icon, color}. A
-    single row is vertically centred; two rows stack. A row whose value is over
-    threshold blinks its bar on the off-frame.
+    single row is vertically centred; 2-4 rows are spread evenly. A row whose
+    value is over threshold blinks its bar on the off-frame.
     """
     fb = FB()
-    rows = rows[:2]
-    ys = [18] if len(rows) == 1 else [2, 34]
-    for y, r in zip(ys, rows):
+    rows = rows[:4]
+    for y, r in zip(_row_ys(len(rows)), rows):
         _draw_sensor_row(fb, y, r.get("label", ""), r.get("pct", 0),
                          r.get("value_txt", ""), flash_on, r.get("over", False),
                          icon=r.get("icon"), accent=ACCENTS.get(r.get("color", "white"), WHITE))

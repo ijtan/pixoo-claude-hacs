@@ -35,6 +35,7 @@
           "dance": "Animate the Claude mascot",
           "page_seconds": "Seconds per page",
           "alert_priority": "Breached sensors take over",
+          "bars_per_page": "Sensor bars per page",
           "show_clock": "Show the clock",
           "brightness": "Brightness"
         },
@@ -47,6 +48,7 @@
           "dance": "Give the Claude mascot a gentle idle bob. Pauses while a bar is flashing so the alert stays clear.",
           "page_seconds": "How long each page (Claude usage, then each monitored sensor) stays on screen before rotating.",
           "alert_priority": "When a monitored sensor crosses its alert threshold, show only the breached sensor(s) until they clear, instead of waiting for their turn in the rotation.",
+          "bars_per_page": "How many monitored-sensor bars to stack on one page (1-4). More bars means denser, smaller rows.",
           "show_clock": "Show the current time in the top-right of the header.",
           "brightness": "Panel brightness, 0–100."
         }

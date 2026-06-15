@@ -37,9 +37,13 @@ Shared prerequisite for both tasks below:
       changes re-render the current page without advancing; nothing to show →
       cloud channel (when enabled).
 
+- [x] **Combined sensor page** — up to 2 monitored sensors per page (stacked
+      bars) instead of one-per-page; a single sensor is centred. Fewer rotations.
+
 > Follow-ups (not planned yet): alert-priority mode (a breached sensor jumps the
-> queue instead of waiting its turn); >2-bar combined sensor page; per-sensor
-> icon/color. Arbitrary-sensor support + sensor-bars screen are now covered.
+> queue instead of waiting its turn); per-sensor icon/color; possibly >2 bars on
+> a page if labels stay legible. Arbitrary-sensor support + sensor-bars screen
+> are covered.
 
 > Deferred (see ideas.md): ticking seconds via per-interval GIF baking — fragile
 > on flaky WiFi + the loop-vs-advance mismatch.
